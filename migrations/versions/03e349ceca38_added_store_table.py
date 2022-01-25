@@ -1,8 +1,8 @@
 """Added Store Table
 
-Revision ID: 7d99598ee126
-Revises: 8aba0e8fdeb5
-Create Date: 2022-01-25 00:55:12.181275
+Revision ID: 03e349ceca38
+Revises: e595a5647fbf
+Create Date: 2022-01-26 00:27:06.222287
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '7d99598ee126'
-down_revision = '8aba0e8fdeb5'
+revision = '03e349ceca38'
+down_revision = 'e595a5647fbf'
 branch_labels = None
 depends_on = None
 
