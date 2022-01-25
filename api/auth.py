@@ -1,21 +1,21 @@
-import time
+from datetime import timedelta
 
-import jwt
-from fastapi import APIRouter
-from passlib.context import CryptContext
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
+from starlette import status
 
 from database import get_db_session
 from models import User
-from schemas.users import LoginUserSchema, RegisterUserSchema
+from schemas.token import TokenResponseSchema
+from schemas.users import RegisterUserSchema
+from utils import ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user, create_access_token, get_password_hash
 
 auth_router = APIRouter(prefix="", tags=['Authentication'])
-SECRET = "MOBILEACCESSORIESSECRETKEY!"
-pswd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 @auth_router.post('/register')
 def register(data: RegisterUserSchema):
-    pswd_hashed = pswd_context.hash(data.password)
+    hashed_password = get_password_hash(data.password)
 
     with get_db_session() as db_session:
         existing_user = db_session.query(User).filter_by(user_name=data.username).first()
@@ -26,7 +26,7 @@ def register(data: RegisterUserSchema):
                 "status": "Not registered"
             }
 
-        user = User(user_name=data.username, email=data.email, hash_password=pswd_hashed)
+        user = User(user_name=data.username, email=data.email, hash_password=hashed_password)
 
         db_session.add(user)
         db_session.commit()
@@ -36,26 +36,16 @@ def register(data: RegisterUserSchema):
         }
 
 
-@auth_router.post('/login')
-def login(data: LoginUserSchema):
-    with get_db_session() as db_session:
-        existing_user = db_session.query(User).filter_by(user_name=data.username).first()
-        if not existing_user:
-            return {
-                "message": "Login failed",
-                "status_code": 401
-            }
+@auth_router.post('/login', response_model=TokenResponseSchema)
+def login(user_data: OAuth2PasswordRequestForm = Depends()):
+    existing_user = authenticate_user(user_data.username, user_data.password)
+    if not existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-        if pswd_context.verify(data.password, existing_user.hash_password):
-            expire_time = int(time.time() + 3600)
-            token = jwt.encode({"exp": expire_time}, SECRET, algorithm="HS256")
-            return {
-                "message": "You Login Successfully",
-                "status_code": 200,
-                "session_token": token
-            }
-        else:
-            return {
-                "message": "Login failed",
-                "status_code": 401
-            }
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user_data.username}, expires_delta=access_token_expires)
+    return {"access_token": access_token, "token_type": "bearer"}
