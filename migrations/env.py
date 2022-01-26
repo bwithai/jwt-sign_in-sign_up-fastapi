@@ -16,7 +16,7 @@ sys.path.append(BASE_DIR)
 
 config = context.config
 
-config.set_main_option("sqlalchemy.url", os.environ.get("DB_URI"))
+config.set_main_option("sqlalchemy.url", "sqlite:///database.sqlite")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -54,6 +54,7 @@ def run_migrations_offline():
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
+        render_as_batch=True,
         dialect_opts={"paramstyle": "named"},
     )
 
